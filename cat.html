@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shamir's Secret Sharing</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 60px;
+            max-width: 600px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-10px);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        label {
+            background-color: #2196F3;
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        label:hover {
+            background-color: #1976D2;
+        }
+
+        .output {
+            margin-top: 40px;
+            padding: 30px;
+            background-color: #f1f8e9;
+            border-radius: 12px;
+            font-size: 22px;
+            color: #333;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .output-card {
+            background-color: #e3f2fd;
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 24px;
+            color: #555;
+            margin-top: 20px;
+        }
+
+        .output-card p {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        footer {
+            margin-top: 50px;
+            font-size: 16px;
+            color: #888;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Select a JSON File</h1>
+
+        <!-- Custom styled file input -->
+        <label for="fileInput">Choose File</label>
+        <input type="file" id="fileInput" />
+
+        <!-- Output container -->
+        <div class="output" id="output">Upload a JSON file to see the result.</div>
+
+        <footer>Shamir's Secret Sharing Algorithm</footer>
+    </div>
+
+    <script>
+        // Function to decode a value from a given base to decimal
+        function decodeValue(value, base) {
+            return parseInt(value, base);
+        }
+
+        // Lagrange interpolation to find the constant term (c) of the polynomial
+        function lagrangeInterpolation(points, k) {
+            let secret = 0;
+
+            for (let i = 0; i < k; i++) {
+                let term = points[i].y;
+                for (let j = 0; j < k; j++) {
+                    if (i !== j) {
+                        term *= (0 - points[j].x) / (points[i].x - points[j].x);
+                    }
+                }
+                secret += term;
+            }
+
+            return secret;
+        }
+
+        // Function to read and process the JSON file
+        function processFile(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                document.getElementById('output').innerHTML = '<div class="output-card"><p>No file selected!</p></div>';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const jsonData = JSON.parse(e.target.result);
+
+                // Extract n and k
+                const n = jsonData.keys.n;  
+                const k = jsonData.keys.k;
+
+                // Decode the points
+                let points = [];
+                for (let key in jsonData) {
+                    if (key !== 'keys') {
+                        const x = parseInt(key);
+                        const base = parseInt(jsonData[key].base);
+                        const encodedValue = jsonData[key].value;
+                        const y = decodeValue(encodedValue, base);  // Decode y value
+                        points.push({ x, y });
+                    }
+                }
+
+                // Sort the points based on x value (just in case)
+                points.sort((a, b) => a.x - b.x);
+
+                // Apply Lagrange interpolation to find the constant term 'c'
+                const secret = lagrangeInterpolation(points, k);
+
+                // Display the result
+                document.getElementById('output').innerHTML = `
+                    <div class="output-card">
+                        <p>The constant term (secret 'c') is: <strong>${Math.round(secret)}</strong></p>
+                    </div>`;
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Event listener for file input change
+        document.getElementById('fileInput').addEventListener('change', processFile);
+    </script>
+
+</body>
+</html>
